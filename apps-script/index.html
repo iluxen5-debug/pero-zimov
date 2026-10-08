@@ -465,7 +465,7 @@
           
           <div>
             <label>🏷 Модель</label>
-            <select id="model" onchange="handleDropdown(this, 'model', 'Выберите модель')">
+            <select id="model" onchange="handleDropdown(this, 'model', 'Выберите модель'); applyPriceForModel();">
               <option value="" disabled selected>— Загрузка... —</option>
             </select>
           </div>
@@ -486,6 +486,10 @@
             <select id="podoshva" onchange="handleDropdown(this, 'podoshva', 'Выберите подошву')">
               <option value="" disabled selected>— Загрузка... —</option>
             </select>
+          </div>
+          <div class="full-width">
+            <label>💰 Цена, ₽ <span id="priceHint" style="font-weight:400; color:#888; font-size:11px;"></span></label>
+            <input id="price" type="number" inputmode="numeric" min="0" step="10" placeholder="Подставится из прайса после выбора модели">
           </div>
           <div class="full-width">
             <label>🧵 Верх</label>
@@ -571,6 +575,7 @@
               <b>Верх</b><span id="vVerh"></span>
               <b>Подклад</b><span id="vPodklad"></span>
               <b>Подошва</b><span id="vPodoshva"></span>
+              <b>Цена</b><span id="vPrice"></span>
               <b>Оплата</b><span id="vPayment"></span>
               <b>Примечание</b><span id="vNote"></span>
               <b>Трек-номер</b><span id="vTrack"></span>
@@ -608,6 +613,34 @@
     var WITHOUT_TRACK_ORDERS = [];
     var CURRENT_ORDER = null;
     var DROPDOWNS = {};
+    var PRICES = {};
+
+    // Экранирование текста перед вставкой в HTML (примечания с < > " и т.п.)
+    function esc(v) {
+      return String(v == null ? '' : v)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function formatPrice(v) {
+      var n = Number(String(v || '').replace(/\s/g, '').replace(',', '.'));
+      if (!v || isNaN(n)) return v || '—';
+      return n.toLocaleString('ru-RU') + ' ₽';
+    }
+
+    function applyPriceForModel() {
+      var model = document.getElementById('model').value;
+      var input = document.getElementById('price');
+      var hint = document.getElementById('priceHint');
+      if (!model || model === '__ADD_NEW__') { input.value = ''; hint.innerText = ''; return; }
+      if (PRICES.hasOwnProperty(model)) {
+        input.value = PRICES[model];
+        hint.innerText = '(из прайса, можно изменить)';
+      } else {
+        input.value = '';
+        hint.innerText = '(нет в прайсе — введите вручную)';
+      }
+    }
 
     function hideAppPreloader() {
       var p = document.getElementById('app-preloader');
@@ -622,6 +655,7 @@
       ALL_ORDERS = res.allOrders || [];
       WITHOUT_TRACK_ORDERS = res.ordersList || [];
       DROPDOWNS = res.dropdowns || {};
+      PRICES = res.prices || {};
 
       renderAllDropdowns(DROPDOWNS);
       renderStatusOptions(res.statuses || ['Новый', 'В работе', 'Готовы', 'Трек создан', 'Отправлены']);
@@ -697,8 +731,7 @@
       if (!sel) return;
       var html = '<option value="" disabled selected>— ' + placeholder + ' —</option>';
       for (var i = 0; i < items.length; i++) {
-        var it = String(items[i]).replace(/"/g, '&quot;');
-        html += '<option value="' + it + '">' + items[i] + '</option>';
+        html += '<option value="' + esc(items[i]) + '">' + esc(items[i]) + '</option>';
       }
       html += '<option value="__ADD_NEW__" style="color: #2563eb; font-weight: 700;">➕ Добавить новый...</option>';
       sel.innerHTML = html;
@@ -739,6 +772,14 @@
             if (!res.existed) DROPDOWNS[listType].push(res.value);
             fillSelect(selectElem.id, DROPDOWNS[listType], placeholder);
             selectElem.value = res.value;
+            if (listType === 'model') {
+              google.script.run
+                .withSuccessHandler(function(p) {
+                  if (p !== '' && p !== null) PRICES[res.value] = p;
+                  applyPriceForModel();
+                })
+                .getPriceForModel(res.value);
+            }
           } else {
             alert('Ошибка добавления: ' + res.error);
           }
@@ -760,6 +801,7 @@
         podoshva: document.getElementById('podoshva').value,
         verh: document.getElementById('verh').value,
         podklad: document.getElementById('podklad').value,
+        price: document.getElementById('price').value,
         note: document.getElementById('note').value
       };
 
@@ -772,17 +814,16 @@
       btn.innerText = '⏳ Сохранение...';
 
       google.script.run
-        .withSuccessHandler(function(resMsg) {
+        .withSuccessHandler(function(res) {
           btn.disabled = false;
           btn.innerText = '✔ СОЗДАТЬ ЗАКАЗ';
-          showMessage('orderMsg', resMsg, 'success');
-
-          var currentNum = parseInt(orderData.orderId, 10);
-          if (!isNaN(currentNum)) {
-            document.getElementById('orderIdDisplay').value = currentNum + 1;
-            ALL_ORDERS.unshift(String(currentNum));
-            WITHOUT_TRACK_ORDERS.unshift(String(currentNum));
-          }
+          // Номер выдаёт сервер — он мог отличаться от показанного, если кто-то создал заказ раньше
+          showMessage('orderMsg', res.message, 'success');
+          document.getElementById('orderIdDisplay').value = res.nextId;
+          ALL_ORDERS.unshift(String(res.id));
+          WITHOUT_TRACK_ORDERS.unshift(String(res.id));
+          document.getElementById('price').value = '';
+          document.getElementById('priceHint').innerText = '';
           document.getElementById('model').value = '';
           document.getElementById('size').value = '';
           document.getElementById('kolodka').value = '';
@@ -811,11 +852,11 @@
           }
           var html = '';
           orders.forEach(function(o) {
-            html += '<div class="track-item" data-id="' + o.id + '">' +
-              '<div class="track-item-info">№ ' + o.id + '<span>' + (o.model || '') + ' ' + (o.size || '') + '</span></div>' +
+            html += '<div class="track-item" data-id="' + esc(o.id) + '">' +
+              '<div class="track-item-info">№ ' + esc(o.id) + '<span>' + esc(o.model) + ' ' + esc(o.size) + '</span></div>' +
               '<div class="track-input-wrap">' +
                 '<button type="button" class="btn-disk-save" title="Сохранить трек" onclick="saveSingleTrackItem(\'' + o.id + '\', this)">💾</button>' +
-                '<input type="text" placeholder="Введите трек-номер" value="' + (o.track || '') + '">' +
+                '<input type="text" placeholder="Введите трек-номер" value="' + esc(o.track) + '">' +
               '</div>' +
             '</div>';
           });
@@ -962,6 +1003,7 @@
       document.getElementById('vVerh').innerText = order.verh || '—';
       document.getElementById('vPodklad').innerText = order.podklad || '—';
       document.getElementById('vPodoshva').innerText = order.podoshva || '—';
+      document.getElementById('vPrice').innerText = formatPrice(order.price);
       document.getElementById('vPayment').innerText = order.payment || 'Не оплачено';
       document.getElementById('vNote').innerText = order.note || '—';
       document.getElementById('vTrack').innerText = order.track || '—';
@@ -1079,13 +1121,13 @@
             '<div class="l-date">' + (o.date || '') + '</div>' +
           '</div>' +
           '<div class="l-body">' +
-            '<div class="l-row"><div class="l-key">Модель:</div><div class="l-val">' + (o.model || '') + '</div></div>' +
-            '<div class="l-row"><div class="l-key">Размер:</div><div class="l-val" style="font-size:16px; font-weight:800;">' + (o.size || '') + '</div></div>' +
-            '<div class="l-row"><div class="l-key">Колодка:</div><div class="l-val">' + (o.kolodka || '') + '</div></div>' +
-            '<div class="l-row"><div class="l-key">Верх:</div><div class="l-val">' + (o.verh || '') + '</div></div>' +
-            '<div class="l-row"><div class="l-key">Подклад:</div><div class="l-val">' + (o.podklad || '') + '</div></div>' +
-            '<div class="l-row"><div class="l-key">Подошва:</div><div class="l-val">' + (o.podoshva || '') + '</div></div>' +
-            (o.note ? '<div class="l-note"><b>Прим:</b> ' + o.note + '</div>' : '') +
+            '<div class="l-row"><div class="l-key">Модель:</div><div class="l-val">' + esc(o.model) + '</div></div>' +
+            '<div class="l-row"><div class="l-key">Размер:</div><div class="l-val" style="font-size:16px; font-weight:800;">' + esc(o.size) + '</div></div>' +
+            '<div class="l-row"><div class="l-key">Колодка:</div><div class="l-val">' + esc(o.kolodka) + '</div></div>' +
+            '<div class="l-row"><div class="l-key">Верх:</div><div class="l-val">' + esc(o.verh) + '</div></div>' +
+            '<div class="l-row"><div class="l-key">Подклад:</div><div class="l-val">' + esc(o.podklad) + '</div></div>' +
+            '<div class="l-row"><div class="l-key">Подошва:</div><div class="l-val">' + esc(o.podoshva) + '</div></div>' +
+            (o.note ? '<div class="l-note"><b>Прим:</b> ' + esc(o.note) + '</div>' : '') +
           '</div>' +
         '</div>' +
         '<div class="l-insole-block">' +
@@ -1093,8 +1135,8 @@
             '<div class="insole-order">№ ' + o.id + '</div>' +
             '<div class="insole-sub">PERO</div>' +
           '</div>' +
-          '<div class="insole-mid">' + (o.podklad || '') + '</div>' +
-          '<div class="insole-size">' + (o.size || '') + '</div>' +
+          '<div class="insole-mid">' + esc(o.podklad) + '</div>' +
+          '<div class="insole-size">' + esc(o.size) + '</div>' +
         '</div>' +
       '</div>';
     }
@@ -1112,8 +1154,8 @@
       var cleanTrack = String(o.track || '').replace(/\s+/g, '');
       return '<div class="track-card">' +
         '<div class="t-num">Заказ №' + o.id + '</div>' +
-        '<svg class="barcode-svg" data-barcode="' + cleanTrack + '"></svg>' +
-        '<div class="t-info">' + (o.model || '') + ' (' + (o.size || '') + ')</div>' +
+        '<svg class="barcode-svg" data-barcode="' + esc(cleanTrack) + '"></svg>' +
+        '<div class="t-info">' + esc(o.model) + ' (' + esc(o.size) + ')</div>' +
       '</div>';
     }
 
