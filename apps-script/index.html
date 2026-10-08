@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>PERO Заказы</title>
+  <!-- Библиотека штрихкодов JsBarcode -->
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+  <style>
+    /* ========================================================
+       ЭКРАН ЗАГРУЗКИ (СПИННЕР)
+       ======================================================== */
+    #app-preloader {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      background: #1b3570;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 999999;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+    .app-spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid rgba(255, 255, 255, 0.2);
+      border-top-color: #ffffff;
+      border-radius: 50%;
+      animation: spinPreloader 0.8s linear infinite;
+    }
+    .app-preloader-text {
+      margin-top: 18px;
+      color: #ffffff;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    @keyframes spinPreloader {
+      to { transform: rotate(360deg); }
+    }
+    #app-preloader.done {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    /* ========================================================
+       ОСНОВНЫЕ СТИЛИ
+       ======================================================== */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    body {
+      background: #1e3a8a;
+      background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%);
+      min-height: 100vh;
+      padding: 16px 12px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      color: #333;
+    }
+    .app-container {
+      width: 100%;
+      max-width: 560px;
+      margin: 0 auto;
+    }
+    
+    /* ШАПКА */
+    .app-header {
+      text-align: center;
+      color: #ffffff;
+      margin-bottom: 14px;
+    }
+    .app-header h1 {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+    .feather-png-icon {
+      width: 32px;
+      height: 32px;
+      object-fit: contain;
+      display: inline-block;
+      vertical-align: middle;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    }
+    .app-header p {
+      font-size: 13px;
+      opacity: 0.9;
+      margin-top: 3px;
+    }
+
+    /* ВКЛАДКИ */
+    .tabs-nav {
+      display: flex;
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(8px);
+      padding: 4px;
+      border-radius: 12px;
+      margin-bottom: 12px;
+      gap: 4px;
+    }
+    .tab-btn {
+      flex: 1;
+      border: none;
+      background: transparent;
+      color: #fff;
+      padding: 10px 4px;
+      font-size: 13px;
+      font-weight: 700;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-align: center;
+    }
+    .tab-btn.active {
+      background: #ffffff;
+      color: #1e3a8a;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    }
+
+    /* КАРТОЧКА И ФОРМА */
+    .card {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 18px 16px;
+      box-shadow: 0 12px 35px rgba(0,0,0,0.25);
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .full-width {
+      grid-column: span 2;
+    }
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      color: #4b5563;
+      margin-bottom: 5px;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+      background: #fff;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 2px rgba(37,99,235,0.15);
+    }
+    input.g {
+      background: #f3f4f6;
+      color: #374151;
+      font-weight: 600;
+    }
+    input.b {
+      background: #eff6ff;
+      color: #1d4ed8;
+      font-weight: 700;
+    }
+
+    /* КНОПКИ */
+    .btn {
+      width: 100%;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      padding: 13px 16px;
+      font-size: 14px;
+      font-weight: 700;
+      border-radius: 10px;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .btn:hover { background: #1d4ed8; }
+    .btn:active { transform: scale(0.99); }
+    .btn:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .btn-print {
+      background: #475569;
+      margin-top: 8px;
+    }
+    .btn-print:hover { background: #334155; }
+    .btn-sheet {
+      display: block;
+      text-align: center;
+      margin-top: 14px;
+      color: #6b7280;
+      font-size: 12px;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .btn-sheet:hover {
+      color: #1e3a8a;
+      text-decoration: underline;
+    }
+
+    /* СООБЩЕНИЯ */
+    .message {
+      margin-top: 12px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      display: none;
+    }
+    .message.success {
+      background: #ecfdf5;
+      color: #065f46;
+      border: 1px solid #a7f3d0;
+      display: block;
+    }
+    .message.error {
+      background: #fef2f2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+      display: block;
+    }
+
+    /* ТРЕКИ */
+    .track-box {
+      max-height: 380px;
+      overflow-y: auto;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 8px;
+      margin-bottom: 12px;
+      background: #f9fafb;
+    }
+    .track-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      background: #fff;
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid #e5e7eb;
+      margin-bottom: 6px;
+    }
+    .track-item-info {
+      font-size: 13px;
+      font-weight: 700;
+      color: #1f2937;
+      min-width: 90px;
+    }
+    .track-item-info span {
+      display: block;
+      font-size: 11px;
+      font-weight: 400;
+      color: #6b7280;
+    }
+    .track-input-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 1;
+    }
+    .btn-disk-save {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 6px;
+      font-size: 15px;
+      width: 34px;
+      height: 34px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 0.2s;
+    }
+    .btn-disk-save:hover {
+      background: #dbeafe;
+    }
+    .track-item input {
+      padding: 8px 10px;
+      font-size: 13px;
+    }
+
+    /* ПОИСК И ПРОСМОТР КАРТОЧКИ */
+    .search-wrap {
+      position: relative;
+      margin-bottom: 14px;
+    }
+    .order-list {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: #fff;
+      border: 1px solid #d1d5db;
+      border-top: none;
+      border-radius: 0 0 8px 8px;
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 100;
+      display: none;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+    }
+    .order-list div {
+      padding: 10px 12px;
+      font-size: 13px;
+      cursor: pointer;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .order-list div:hover {
+      background: #eff6ff;
+      color: #1d4ed8;
+      font-weight: 600;
+    }
+
+    .view-card-wrapper {
+      position: relative;
+      margin-top: 10px;
+    }
+    .card-loader-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(255,255,255,0.85);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      border-radius: 12px;
+    }
+    .spinner-ring {
+      width: 32px;
+      height: 32px;
+      border: 3px solid #e5e7eb;
+      border-top-color: #2563eb;
+      border-radius: 50%;
+      animation: spinPreloader 0.8s linear infinite;
+    }
+    .spinner-text {
+      margin-top: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #4b5563;
+    }
+
+    .view-card {
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 14px;
+      background: #ffffff;
+      display: none;
+    }
+    .card-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      gap: 6px;
+    }
+    .nav-arrow-btn {
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      color: #334155;
+    }
+    .nav-arrow-btn:hover { background: #e2e8f0; }
+    .view-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: #1e3a8a;
+    }
+    .kv {
+      display: grid;
+      grid-template-columns: 110px 1fr;
+      gap: 6px 10px;
+      font-size: 13px;
+      margin-bottom: 14px;
+      background: #f8fafc;
+      padding: 10px;
+      border-radius: 8px;
+    }
+    .kv b { color: #64748b; font-weight: 600; }
+    .kv span { color: #0f172a; word-break: break-word; font-weight: 500; }
+
+    .status-row {
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+      margin-bottom: 10px;
+    }
+    .status-row > div { flex: 1; }
+  </style>
+</head>
+<body>
+
+  <!-- СПИННЕР НА ВРЕМЯ НАЧАЛЬНОЙ ЗАГРУЗКИ -->
+  <div id="app-preloader">
+    <div class="app-spinner"></div>
+    <div class="app-preloader-text">PERO • Загрузка данных...</div>
+  </div>
+
+  <div class="app-container">
+    <!-- ШАПКА -->
+    <div class="app-header">
+      <h1>
+        <img class="feather-png-icon" src="https://i.postimg.cc/vHKvgxbh/featherwhite-(1).png" alt="PERO">
+        <span>PERO ЗАКАЗЫ</span>
+      </h1>
+      <p>Управление заказами</p>
+    </div>
+
+    <!-- ВКЛАДКИ -->
+    <div class="tabs-nav">
+      <button type="button" class="tab-btn active" onclick="switchTab('orderTab', this)">📝 Заказ</button>
+      <button type="button" class="tab-btn" onclick="switchTab('trackTab', this)">📍 Трек</button>
+      <button type="button" class="tab-btn" onclick="switchTab('viewTab', this)">👁 Поиск</button>
+    </div>
+
+    <div class="card">
+      <!-- ВКЛАДКА 1: НОВЫЙ ЗАКАЗ -->
+      <div id="orderTab" class="tab-content active">
+        <div class="form-grid">
+          <div>
+            <label>📅 Дата</label>
+            <input id="date" class="g" readonly>
+          </div>
+          <div>
+            <label>🔢 Номер заказа</label>
+            <input id="orderIdDisplay" class="b" readonly value="...">
+          </div>
+          
+          <div>
+            <label>🏷 Модель</label>
+            <select id="model" onchange="handleDropdown(this, 'model', 'Выберите модель')">
+              <option value="" disabled selected>— Загрузка... —</option>
+            </select>
+          </div>
+          <div>
+            <label>📏 Размер</label>
+            <select id="size" onchange="handleDropdown(this, 'size', 'Выберите размер')">
+              <option value="" disabled selected>— Загрузка... —</option>
+            </select>
+          </div>
+          <div>
+            <label>👞 Колодка</label>
+            <select id="kolodka" onchange="handleDropdown(this, 'kolodka', 'Выберите колодку')">
+              <option value="" disabled selected>— Загрузка... —</option>
+            </select>
+          </div>
+          <div>
+            <label>👟 Подошва</label>
+            <select id="podoshva" onchange="handleDropdown(this, 'podoshva', 'Выберите подошву')">
+              <option value="" disabled selected>— Загрузка... —</option>
+            </select>
+          </div>
+          <div class="full-width">
+            <label>🧵 Верх</label>
+            <select id="verh" onchange="handleDropdown(this, 'verh', 'Выберите верх')">
+              <option value="" disabled selected>— Загрузка... —</option>
+            </select>
+          </div>
+          <div class="full-width">
+            <label>🎨 Подклад</label>
+            <select id="podklad" onchange="handleDropdown(this, 'podklad', 'Выберите подклад')">
+              <option value="" disabled selected>— Загрузка... —</option>
+            </select>
+          </div>
+          <div class="full-width">
+            <label>📝 Примечание</label>
+            <textarea id="note" rows="2" placeholder="Дополнительные пожелания..."></textarea>
+          </div>
+        </div>
+
+        <button type="button" class="btn" id="btnOrder" onclick="submitOrder()">✔ СОЗДАТЬ ЗАКАЗ</button>
+        <div id="orderMsg" class="message"></div>
+        <a href="https://docs.google.com/spreadsheets/d/1IFj80iC1o3rDmPn5_wmKgJrYeZ_Lht6EvBu0cLjmLaU/edit?usp=drivesdk" target="_blank" class="btn-sheet">📊 Перейти в таблицу</a>
+      </div>
+
+      <!-- ВКЛАДКА 2: ВВОД ТРЕКОВ -->
+      <div id="trackTab" class="tab-content">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <label style="margin: 0; font-weight: 700;">📋 Заказы со статусом «Готовы»</label>
+          <button type="button" class="btn" onclick="loadReadyOrders()" style="width: auto; padding: 6px 12px; font-size: 11px; margin: 0; background: #2880b9;">🔄 Обновить</button>
+        </div>
+        
+        <div class="track-box" id="readyOrdersBox">
+          <p style="text-align: center; color: #888; font-size: 13px; margin: 20px 0;">Загрузка списка готовых заказов...</p>
+        </div>
+
+        <button type="button" class="btn" id="btnTrack" onclick="submitMultipleTracks()">💾 СОХРАНИТЬ ВСЕ ТРЕКИ</button>
+        <div id="trackMsg" class="message"></div>
+        <a href="https://docs.google.com/spreadsheets/d/1IFj80iC1o3rDmPn5_wmKgJrYeZ_Lht6EvBu0cLjmLaU/edit?usp=drivesdk" target="_blank" class="btn-sheet">📊 Перейти в таблицу</a>
+      </div>
+
+      <!-- ВКЛАДКА 3: ПОИСК И ПЕЧАТЬ -->
+      <div id="viewTab" class="tab-content">
+        <div class="search-wrap" id="viewSearchWrap">
+          <label>🔍 Найти заказ по номеру</label>
+          <input type="text" id="viewSearch" placeholder="Введите номер заказа для поиска" autocomplete="off" oninput="filterOrders('view')" onfocus="filterOrders('view')">
+          <div id="viewOrderList" class="order-list"></div>
+        </div>
+
+        <button type="button" class="btn btn-print" id="btnPrintAllNew" onclick="printAllNew()" style="margin-bottom:10px;">🖨 Печать всех новых заказов</button>
+        <button type="button" class="btn btn-print" id="btnPrintAllTracks" onclick="printAllTracks()" style="margin-bottom:15px; margin-top:0;">🖨 Печать всех новых треков</button>
+
+        <!-- БЛОК ЗАКАЗОВ С СОЗДАННЫМИ ТРЕКАМИ И КНОПКОЙ "ВСЁ ОТПРАВЛЕНО" -->
+        <div id="trackOrdersInfo" style="margin: -6px 0 16px 0; padding: 10px 12px; background: #eef4fc; border: 1px dashed #90caf9; border-radius: 6px; font-size: 13px; line-height: 1.5; color: #1565c0; display: none;">
+          <div style="font-weight: 700; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+            <span>📦 Заказы с созданными треками:</span>
+            <span id="trackOrdersCount" style="font-size: 11px; background: #1e70a9; color: #fff; padding: 1px 7px; border-radius: 10px;">0</span>
+          </div>
+          <div id="trackOrdersList" style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px;"></div>
+          
+          <button type="button" class="btn" id="btnMarkSent" onclick="markAllSent()" style="background: #059669; padding: 8px 12px; font-size: 13px; width: 100%;">
+            🚚 Всё отправлено
+          </button>
+        </div>
+
+        <div class="view-card-wrapper">
+          <div id="cardLoader" class="card-loader-overlay">
+            <div class="spinner-ring"></div>
+            <div class="spinner-text">Загрузка заказа...</div>
+          </div>
+
+          <div id="viewCard" class="view-card">
+            <div class="card-header-row">
+              <button type="button" class="nav-arrow-btn" id="btnPrevOrder" onclick="navigateOrder(-1)">◀ Предыдущий</button>
+              <div class="view-title" id="viewTitle">Заказ</div>
+              <button type="button" class="nav-arrow-btn" id="btnNextOrder" onclick="navigateOrder(1)">Следующий ▶</button>
+            </div>
+
+            <div class="kv">
+              <b>Дата</b><span id="vDate"></span>
+              <b>Модель</b><span id="vModel"></span>
+              <b>Размер</b><span id="vSize"></span>
+              <b>Колодка</b><span id="vKolodka"></span>
+              <b>Верх</b><span id="vVerh"></span>
+              <b>Подклад</b><span id="vPodklad"></span>
+              <b>Подошва</b><span id="vPodoshva"></span>
+              <b>Оплата</b><span id="vPayment"></span>
+              <b>Примечание</b><span id="vNote"></span>
+              <b>Трек-номер</b><span id="vTrack"></span>
+            </div>
+
+            <div class="status-row">
+              <div>
+                <label>Статус заказа</label>
+                <select id="vStatus"></select>
+              </div>
+              <button type="button" class="btn" id="btnStatus" onclick="saveStatus()" style="width:auto; padding:10px 14px;">Сохранить статус</button>
+            </div>
+
+            <div class="status-row" style="margin-top: 6px; margin-bottom: 12px;">
+              <div>
+                <label>Статус оплаты</label>
+                <select id="vPaymentSelect"></select>
+              </div>
+              <button type="button" class="btn" id="btnPayment" onclick="savePayment()" style="width:auto; padding:10px 14px; background: #2e7d32;">Сохранить оплату</button>
+            </div>
+
+            <button type="button" class="btn btn-print" onclick="printLabel()">🖨 Печать этикетки 75×120</button>
+            <button type="button" class="btn btn-print" onclick="printTrackLabel()">🖨 Печать трек-этикетки 58×40</button>
+          </div>
+        </div>
+
+        <div id="viewMsg" class="message"></div>
+        <a href="https://docs.google.com/spreadsheets/d/1IFj80iC1o3rDmPn5_wmKgJrYeZ_Lht6EvBu0cLjmLaU/edit?usp=drivesdk" target="_blank" class="btn-sheet">📊 Перейти в таблицу</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    var ALL_ORDERS = [];
+    var WITHOUT_TRACK_ORDERS = [];
+    var CURRENT_ORDER = null;
+    var DROPDOWNS = {};
+
+    function hideAppPreloader() {
+      var p = document.getElementById('app-preloader');
+      if (p) p.classList.add('done');
+    }
+
+    function applyInitialData(res) {
+      if (!res) return;
+      if (res.date) document.getElementById('date').value = res.date;
+      if (res.nextId) document.getElementById('orderIdDisplay').value = res.nextId;
+      
+      ALL_ORDERS = res.allOrders || [];
+      WITHOUT_TRACK_ORDERS = res.ordersList || [];
+      DROPDOWNS = res.dropdowns || {};
+
+      renderAllDropdowns(DROPDOWNS);
+      renderStatusOptions(res.statuses || ['Новый', 'В работе', 'Готовы', 'Трек создан', 'Отправлены']);
+      renderPaymentOptions(res.paymentStatuses || ['Не оплачено', 'Оплачено']);
+
+      if (res.trackOrders) {
+        updateTrackOrdersBadges(res.trackOrders);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler(function(res) {
+            if (res && res.ok) {
+              applyInitialData(res);
+            } else if (res && res.error) {
+              showMessage('orderMsg', 'Ошибка загрузки: ' + res.error, 'error');
+            }
+            hideAppPreloader();
+          })
+          .withFailureHandler(function(err) {
+            hideAppPreloader();
+            showMessage('orderMsg', 'Ошибка связи с таблицей: ' + (err.message || err), 'error');
+          })
+          .getInitialData();
+      } else {
+        hideAppPreloader();
+      }
+
+      document.addEventListener('click', function(e) {
+        if (!e.target.closest('#viewSearchWrap')) {
+          var list = document.getElementById('viewOrderList');
+          if (list) list.style.display = 'none';
+        }
+      });
+    });
+
+    function switchTab(tabId, btn) {
+      document.querySelectorAll('.tab-content').forEach(function(el) { el.classList.remove('active'); });
+      document.querySelectorAll('.tab-btn').forEach(function(el) { el.classList.remove('active'); });
+      document.getElementById(tabId).classList.add('active');
+      btn.classList.add('active');
+
+      if (tabId === 'trackTab') {
+        loadReadyOrders();
+      } else if (tabId === 'viewTab') {
+        refreshTrackBadges();
+      }
+    }
+
+    function refreshTrackBadges() {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (res && res.ok) {
+            updateTrackOrdersBadges(res.orders || []);
+          }
+        })
+        .getTrackCreatedOrders();
+    }
+
+    function renderAllDropdowns(dict) {
+      fillSelect('model', dict.model || [], 'Выберите модель');
+      fillSelect('size', dict.size || [], 'Выберите размер');
+      fillSelect('kolodka', dict.kolodka || [], 'Выберите колодку');
+      fillSelect('podoshva', dict.podoshva || [], 'Выберите подошву');
+      fillSelect('verh', dict.verh || [], 'Выберите верх');
+      fillSelect('podklad', dict.podklad || [], 'Выберите подклад');
+    }
+
+    function fillSelect(elemId, items, placeholder) {
+      var sel = document.getElementById(elemId);
+      if (!sel) return;
+      var html = '<option value="" disabled selected>— ' + placeholder + ' —</option>';
+      for (var i = 0; i < items.length; i++) {
+        var it = String(items[i]).replace(/"/g, '&quot;');
+        html += '<option value="' + it + '">' + items[i] + '</option>';
+      }
+      html += '<option value="__ADD_NEW__" style="color: #2563eb; font-weight: 700;">➕ Добавить новый...</option>';
+      sel.innerHTML = html;
+    }
+
+    function renderStatusOptions(statuses) {
+      var sel = document.getElementById('vStatus');
+      if (!sel) return;
+      var html = '';
+      for (var i = 0; i < statuses.length; i++) {
+        html += '<option value="' + statuses[i] + '">' + statuses[i] + '</option>';
+      }
+      sel.innerHTML = html;
+    }
+
+    function renderPaymentOptions(statuses) {
+      var sel = document.getElementById('vPaymentSelect');
+      if (!sel) return;
+      var html = '';
+      for (var i = 0; i < statuses.length; i++) {
+        html += '<option value="' + statuses[i] + '">' + statuses[i] + '</option>';
+      }
+      sel.innerHTML = html;
+    }
+
+    function handleDropdown(selectElem, listType, placeholder) {
+      if (selectElem.value !== '__ADD_NEW__') return;
+      selectElem.value = '';
+
+      var userVal = prompt('Введите новое значение для списка «' + placeholder.replace('Выберите ', '') + '»:');
+      if (!userVal || !userVal.trim()) return;
+      userVal = userVal.trim();
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (res.ok) {
+            if (!DROPDOWNS[listType]) DROPDOWNS[listType] = [];
+            if (!res.existed) DROPDOWNS[listType].push(res.value);
+            fillSelect(selectElem.id, DROPDOWNS[listType], placeholder);
+            selectElem.value = res.value;
+          } else {
+            alert('Ошибка добавления: ' + res.error);
+          }
+        })
+        .withFailureHandler(function(err) {
+          alert('Ошибка связи: ' + err.message);
+        })
+        .addDropdownItem(listType, userVal);
+    }
+
+    function submitOrder() {
+      var btn = document.getElementById('btnOrder');
+      var orderData = {
+        orderId: document.getElementById('orderIdDisplay').value,
+        date: document.getElementById('date').value,
+        model: document.getElementById('model').value,
+        size: document.getElementById('size').value,
+        kolodka: document.getElementById('kolodka').value,
+        podoshva: document.getElementById('podoshva').value,
+        verh: document.getElementById('verh').value,
+        podklad: document.getElementById('podklad').value,
+        note: document.getElementById('note').value
+      };
+
+      if (!orderData.model || !orderData.size) {
+        showMessage('orderMsg', 'Пожалуйста, выберите хотя бы модель и размер', 'error');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerText = '⏳ Сохранение...';
+
+      google.script.run
+        .withSuccessHandler(function(resMsg) {
+          btn.disabled = false;
+          btn.innerText = '✔ СОЗДАТЬ ЗАКАЗ';
+          showMessage('orderMsg', resMsg, 'success');
+
+          var currentNum = parseInt(orderData.orderId, 10);
+          if (!isNaN(currentNum)) {
+            document.getElementById('orderIdDisplay').value = currentNum + 1;
+            ALL_ORDERS.unshift(String(currentNum));
+            WITHOUT_TRACK_ORDERS.unshift(String(currentNum));
+          }
+          document.getElementById('model').value = '';
+          document.getElementById('size').value = '';
+          document.getElementById('kolodka').value = '';
+          document.getElementById('podoshva').value = '';
+          document.getElementById('verh').value = '';
+          document.getElementById('podklad').value = '';
+          document.getElementById('note').value = '';
+        })
+        .withFailureHandler(function(err) {
+          btn.disabled = false;
+          btn.innerText = '✔ СОЗДАТЬ ЗАКАЗ';
+          showMessage('orderMsg', 'Ошибка: ' + err.message, 'error');
+        })
+        .saveOrder(orderData);
+    }
+
+    function loadReadyOrders() {
+      var box = document.getElementById('readyOrdersBox');
+      box.innerHTML = '<p style="text-align:center; color:#888; font-size:13px; margin:20px 0;">Загрузка списка готовых заказов...</p>';
+
+      google.script.run
+        .withSuccessHandler(function(orders) {
+          if (!orders || !orders.length) {
+            box.innerHTML = '<p style="text-align:center; color:#888; font-size:13px; margin:20px 0;">Нет заказов со статусом «Готовы»</p>';
+            return;
+          }
+          var html = '';
+          orders.forEach(function(o) {
+            html += '<div class="track-item" data-id="' + o.id + '">' +
+              '<div class="track-item-info">№ ' + o.id + '<span>' + (o.model || '') + ' ' + (o.size || '') + '</span></div>' +
+              '<div class="track-input-wrap">' +
+                '<button type="button" class="btn-disk-save" title="Сохранить трек" onclick="saveSingleTrackItem(\'' + o.id + '\', this)">💾</button>' +
+                '<input type="text" placeholder="Введите трек-номер" value="' + (o.track || '') + '">' +
+              '</div>' +
+            '</div>';
+          });
+          box.innerHTML = html;
+        })
+        .withFailureHandler(function(err) {
+          box.innerHTML = '<p style="text-align:center; color:#e11d48; font-size:13px; margin:20px 0;">Ошибка: ' + err.message + '</p>';
+        })
+        .getOrdersByStatus('Готовы');
+    }
+
+    function saveSingleTrackItem(orderId, btn) {
+      var row = btn.closest('.track-item');
+      var trackInput = row.querySelector('input');
+      var trackValue = trackInput.value.trim();
+
+      if (!trackValue) {
+        showMessage('trackMsg', 'Введите трек-номер для заказа №' + orderId, 'error');
+        return;
+      }
+
+      var origHtml = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '⏳';
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          btn.innerHTML = '✔';
+          showMessage('trackMsg', res.message, 'success');
+          refreshTrackBadges();
+
+          setTimeout(function() {
+            if (row && row.parentNode) {
+              row.parentNode.removeChild(row);
+              var box = document.getElementById('readyOrdersBox');
+              if (box && !box.querySelector('.track-item')) {
+                box.innerHTML = '<p style="text-align:center; color:#888; font-size:13px; margin:20px 0;">Нет заказов со статусом «Готовы»</p>';
+              }
+            }
+          }, 600);
+        })
+        .withFailureHandler(function(err) {
+          btn.disabled = false;
+          btn.innerHTML = origHtml;
+          showMessage('trackMsg', 'Ошибка: ' + err.message, 'error');
+        })
+        .saveSingleTrack(orderId, trackValue);
+    }
+
+    function submitMultipleTracks() {
+      var box = document.getElementById('readyOrdersBox');
+      var items = box.querySelectorAll('.track-item');
+      var updates = [];
+
+      items.forEach(function(item) {
+        var id = item.getAttribute('data-id');
+        var track = item.querySelector('input').value.trim();
+        if (track) {
+          updates.push({ id: id, track: track });
+        }
+      });
+
+      if (!updates.length) {
+        showMessage('trackMsg', 'Введите хотя бы один трек-номер', 'error');
+        return;
+      }
+
+      var btn = document.getElementById('btnTrack');
+      btn.disabled = true;
+      btn.innerText = '⏳ Сохранение...';
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          btn.disabled = false;
+          btn.innerText = '💾 СОХРАНИТЬ ВСЕ ТРЕКИ';
+          showMessage('trackMsg', res.message || 'Треки успешно сохранены', 'success');
+          loadReadyOrders();
+          refreshTrackBadges();
+        })
+        .withFailureHandler(function(err) {
+          btn.disabled = false;
+          btn.innerText = '💾 СОХРАНИТЬ ВСЕ ТРЕКИ';
+          showMessage('trackMsg', 'Ошибка: ' + err.message, 'error');
+        })
+        .saveMultipleTracks(updates);
+    }
+
+    function filterOrders(prefix) {
+      var val = document.getElementById(prefix + 'Search').value.trim().toLowerCase();
+      var list = document.getElementById(prefix + 'OrderList');
+      if (!val) {
+        list.style.display = 'none';
+        return;
+      }
+
+      var matches = ALL_ORDERS.filter(function(id) {
+        return String(id).toLowerCase().indexOf(val) !== -1;
+      }).slice(0, 20);
+
+      if (!matches.length) {
+        list.style.display = 'none';
+        return;
+      }
+
+      var html = '';
+      matches.forEach(function(id) {
+        html += '<div onclick="selectOrder(\'' + id + '\')">№ ' + id + '</div>';
+      });
+      list.innerHTML = html;
+      list.style.display = 'block';
+    }
+
+    function selectOrder(orderId) {
+      document.getElementById('viewSearch').value = orderId;
+      document.getElementById('viewOrderList').style.display = 'none';
+      loadOrderDetails(orderId);
+    }
+
+    function loadOrderDetails(orderId) {
+      var loader = document.getElementById('cardLoader');
+      var card = document.getElementById('viewCard');
+      loader.style.display = 'flex';
+      card.style.display = 'block';
+
+      google.script.run
+        .withSuccessHandler(function(order) {
+          loader.style.display = 'none';
+          CURRENT_ORDER = order;
+          renderOrderCard(order);
+        })
+        .withFailureHandler(function(err) {
+          loader.style.display = 'none';
+          showMessage('viewMsg', 'Ошибка загрузки заказа: ' + err.message, 'error');
+        })
+        .getOrderById(orderId);
+    }
+
+    function renderOrderCard(order) {
+      document.getElementById('viewTitle').innerText = 'Заказ №' + order.id;
+      document.getElementById('vDate').innerText = order.date || '—';
+      document.getElementById('vModel').innerText = order.model || '—';
+      document.getElementById('vSize').innerText = order.size || '—';
+      document.getElementById('vKolodka').innerText = order.kolodka || '—';
+      document.getElementById('vVerh').innerText = order.verh || '—';
+      document.getElementById('vPodklad').innerText = order.podklad || '—';
+      document.getElementById('vPodoshva').innerText = order.podoshva || '—';
+      document.getElementById('vPayment').innerText = order.payment || 'Не оплачено';
+      document.getElementById('vNote').innerText = order.note || '—';
+      document.getElementById('vTrack').innerText = order.track || '—';
+
+      var stSelect = document.getElementById('vStatus');
+      if (stSelect) stSelect.value = order.status || 'Новый';
+
+      var paySelect = document.getElementById('vPaymentSelect');
+      if (paySelect) paySelect.value = order.payment || 'Не оплачено';
+    }
+
+    function navigateOrder(dir) {
+      if (!CURRENT_ORDER) return;
+      var curIdStr = String(CURRENT_ORDER.id);
+      var idx = ALL_ORDERS.indexOf(curIdStr);
+      if (idx === -1) {
+        for (var i = 0; i < ALL_ORDERS.length; i++) {
+          if (String(ALL_ORDERS[i]) === curIdStr) { idx = i; break; }
+        }
+      }
+      if (idx === -1) return;
+      var nextIdx = idx - dir;
+      if (nextIdx >= 0 && nextIdx < ALL_ORDERS.length) {
+        selectOrder(ALL_ORDERS[nextIdx]);
+      }
+    }
+
+    function saveStatus() {
+      if (!CURRENT_ORDER) return;
+      var newStatus = document.getElementById('vStatus').value;
+      var btn = document.getElementById('btnStatus');
+      btn.disabled = true;
+      btn.innerText = '...';
+
+      google.script.run
+        .withSuccessHandler(function(msg) {
+          btn.disabled = false;
+          btn.innerText = 'Сохранить статус';
+          CURRENT_ORDER.status = newStatus;
+          showMessage('viewMsg', msg, 'success');
+          refreshTrackBadges();
+        })
+        .withFailureHandler(function(err) {
+          btn.disabled = false;
+          btn.innerText = 'Сохранить статус';
+          showMessage('viewMsg', 'Ошибка: ' + err.message, 'error');
+        })
+        .updateOrderStatus(CURRENT_ORDER.id, newStatus);
+    }
+
+    function savePayment() {
+      if (!CURRENT_ORDER) return;
+      var newPay = document.getElementById('vPaymentSelect').value;
+      var btn = document.getElementById('btnPayment');
+      btn.disabled = true;
+      btn.innerText = '...';
+
+      google.script.run
+        .withSuccessHandler(function(msg) {
+          btn.disabled = false;
+          btn.innerText = 'Сохранить оплату';
+          CURRENT_ORDER.payment = newPay;
+          document.getElementById('vPayment').innerText = newPay;
+          showMessage('viewMsg', msg, 'success');
+        })
+        .withFailureHandler(function(err) {
+          btn.disabled = false;
+          btn.innerText = 'Сохранить оплату';
+          showMessage('viewMsg', 'Ошибка: ' + err.message, 'error');
+        })
+        .updateOrderPayment(CURRENT_ORDER.id, newPay);
+    }
+
+    function showMessage(elemId, text, type) {
+      var el = document.getElementById(elemId);
+      if (!el) return;
+      el.className = 'message ' + type;
+      el.innerText = text;
+      el.style.display = 'block';
+      setTimeout(function() {
+        el.style.display = 'none';
+      }, 5000);
+    }
+
+    // ========================================================
+    // ПЕЧАТЬ ЭТИКЕТОК
+    // ========================================================
+    function labelCss() {
+      return '@page { size: 75mm 120mm; margin: 0; }' +
+        'body { margin: 0; padding: 4mm 5mm; font-family: -apple-system, sans-serif; font-size: 13px; color: #000; box-sizing: border-box; }' +
+        '.label-card { width: 65mm; height: 112mm; page-break-after: always; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; }' +
+        '.l-brand-top { text-align: center; font-weight: 900; font-size: 13px; letter-spacing: 2px; margin-bottom: 4px; }' +
+        '.l-head { border-bottom: 2px solid #000; padding-bottom: 4px; display: flex; justify-content: space-between; align-items: flex-end; }' +
+        '.l-num { font-size: 26px; font-weight: 900; }' +
+        '.l-date { font-size: 13px; font-weight: 600; }' +
+        '.l-body { margin-top: 10px; display: flex; flex-direction: column; gap: 7px; flex: 1; }' +
+        '.l-row { display: flex; font-size: 13px; line-height: 1.3; }' +
+        '.l-key { width: 75px; font-weight: 700; flex-shrink: 0; }' +
+        '.l-val { font-weight: 600; word-break: break-word; }' +
+        '.l-note { margin-top: 8px; border-top: 1px dashed #000; padding-top: 6px; font-size: 12px; }' +
+        '.l-insole-block { border-top: 2px solid #000; padding-top: 5px; margin-top: 10px; display: flex; justify-content: space-between; align-items: center; }' +
+        '.insole-left { display: flex; flex-direction: column; gap: 2px; }' +
+        '.insole-order { font-size: 12px; font-weight: 800; }' +
+        '.insole-sub { font-size: 11px; font-weight: 900; letter-spacing: 1px; }' +
+        '.insole-mid { text-align: center; font-size: 13px; font-weight: 700; word-break: break-word; padding: 0 4px; flex: 1; }' +
+        '.insole-size { font-size: 24px; font-weight: 900; line-height: 1; }';
+    }
+
+    function labelHtml(o) {
+      return '<div class="label-card">' +
+        '<div>' +
+          '<div class="l-brand-top">PERO SHOES</div>' +
+          '<div class="l-head">' +
+            '<div class="l-num">№ ' + o.id + '</div>' +
+            '<div class="l-date">' + (o.date || '') + '</div>' +
+          '</div>' +
+          '<div class="l-body">' +
+            '<div class="l-row"><div class="l-key">Модель:</div><div class="l-val">' + (o.model || '') + '</div></div>' +
+            '<div class="l-row"><div class="l-key">Размер:</div><div class="l-val" style="font-size:16px; font-weight:800;">' + (o.size || '') + '</div></div>' +
+            '<div class="l-row"><div class="l-key">Колодка:</div><div class="l-val">' + (o.kolodka || '') + '</div></div>' +
+            '<div class="l-row"><div class="l-key">Верх:</div><div class="l-val">' + (o.verh || '') + '</div></div>' +
+            '<div class="l-row"><div class="l-key">Подклад:</div><div class="l-val">' + (o.podklad || '') + '</div></div>' +
+            '<div class="l-row"><div class="l-key">Подошва:</div><div class="l-val">' + (o.podoshva || '') + '</div></div>' +
+            (o.note ? '<div class="l-note"><b>Прим:</b> ' + o.note + '</div>' : '') +
+          '</div>' +
+        '</div>' +
+        '<div class="l-insole-block">' +
+          '<div class="insole-left">' +
+            '<div class="insole-order">№ ' + o.id + '</div>' +
+            '<div class="insole-sub">PERO</div>' +
+          '</div>' +
+          '<div class="insole-mid">' + (o.podklad || '') + '</div>' +
+          '<div class="insole-size">' + (o.size || '') + '</div>' +
+        '</div>' +
+      '</div>';
+    }
+
+    function trackLabelCss() {
+      return '@page { size: 58mm 40mm; margin: 0; }' +
+        'body { margin: 0; padding: 2mm 3mm; font-family: -apple-system, sans-serif; box-sizing: border-box; }' +
+        '.track-card { width: 52mm; height: 36mm; page-break-after: always; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; box-sizing: border-box; }' +
+        '.t-num { font-size: 14px; font-weight: 800; margin-bottom: 2px; }' +
+        '.t-barcode { width: 100%; max-height: 20mm; }' +
+        '.t-info { font-size: 11px; font-weight: 600; margin-top: 2px; color: #111; }';
+    }
+
+    function trackLabelHtml(o) {
+      var cleanTrack = String(o.track || '').replace(/\s+/g, '');
+      return '<div class="track-card">' +
+        '<div class="t-num">Заказ №' + o.id + '</div>' +
+        '<svg class="barcode-svg" data-barcode="' + cleanTrack + '"></svg>' +
+        '<div class="t-info">' + (o.model || '') + ' (' + (o.size || '') + ')</div>' +
+      '</div>';
+    }
+
+    function openPrintWindow(contentHtml, title, styles, isBarcode) {
+      var w = window.open('', '_blank');
+      if (!w) {
+        alert('Разрешите всплывающие окна в браузере для печати');
+        return;
+      }
+      
+      var barcodeScript = isBarcode 
+        ? '<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"><\/script>' 
+        : '';
+
+      var renderScript = isBarcode 
+        ? '<script>' +
+          '  window.onload = function() {' +
+          '    document.querySelectorAll(".barcode-svg").forEach(function(el) {' +
+          '      var val = el.getAttribute("data-barcode");' +
+          '      if (val) {' +
+          '        try {' +
+          '          JsBarcode(el, val, {' +
+          '            format: "CODE128",' +
+          '            width: 1.5,' +
+          '            height: 38,' +
+          '            displayValue: true,' +
+          '            fontSize: 12,' +
+          '            margin: 0' +
+          '          });' +
+          '        } catch(e) { console.error("Ошибка штрихкода:", e); }' +
+          '      }' +
+          '    });' +
+          '    setTimeout(function() { window.print(); window.close(); }, 350);' +
+          '  };' +
+          '<\/script>'
+        : '<script>window.onload = function() { setTimeout(function() { window.print(); window.close(); }, 300); };<\/script>';
+
+      w.document.write('<!DOCTYPE html><html><head><title>' + title + '</title><style>' + styles + '</style>' + barcodeScript + '</head><body>' + contentHtml + renderScript + '</body></html>');
+      w.document.close();
+      w.focus();
+    }
+
+    function printLabel() {
+      if (!CURRENT_ORDER) return;
+      openPrintWindow(labelHtml(CURRENT_ORDER), 'Этикетка №' + CURRENT_ORDER.id, labelCss(), false);
+    }
+
+    function printTrackLabel() {
+      if (!CURRENT_ORDER) return;
+      if (!String(CURRENT_ORDER.track || '').trim()) {
+        showMessage('viewMsg', 'У заказа нет трек-номера', 'error');
+        return;
+      }
+      openPrintWindow(trackLabelHtml(CURRENT_ORDER), 'Трек №' + CURRENT_ORDER.id, trackLabelCss(), true);
+    }
+
+    function printAllNew() {
+      var btn = document.getElementById('btnPrintAllNew');
+      if (btn) { btn.disabled = true; btn.innerText = '⏳ Загрузка новых заказов...'; }
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (btn) { btn.disabled = false; btn.innerText = '🖨 Печать всех новых заказов'; }
+          if (!res.orders || !res.orders.length) {
+            showMessage('viewMsg', 'Нет заказов со статусом «Новый»', 'error');
+            return;
+          }
+          openPrintWindow(res.orders.map(labelHtml).join(''), 'Новые заказы (' + res.orders.length + ')', labelCss(), false);
+          showMessage('viewMsg', 'К печати: ' + res.orders.length + ' заказов', 'success');
+        })
+        .withFailureHandler(function(err) {
+          if (btn) { btn.disabled = false; btn.innerText = '🖨 Печать всех новых заказов'; }
+          showMessage('viewMsg', 'Ошибка: ' + err.message, 'error');
+        })
+        .getNewOrders();
+    }
+
+    function updateTrackOrdersBadges(orders) {
+      var infoBox = document.getElementById('trackOrdersInfo');
+      var listDiv = document.getElementById('trackOrdersList');
+      var countSpan = document.getElementById('trackOrdersCount');
+      if (!infoBox || !listDiv || !countSpan) return;
+
+      if (!orders || !orders.length) {
+        infoBox.style.display = 'none';
+        return;
+      }
+      countSpan.innerText = orders.length;
+      var html = '';
+      orders.forEach(function(o) {
+        html += '<span style="background:#fff; border:1px solid #bbdefb; border-radius:4px; padding:2px 6px; font-weight:600; font-size:12px; cursor:pointer;" onclick="selectOrder(\'' + o.id + '\')">№ ' + o.id + '</span>';
+      });
+      listDiv.innerHTML = html;
+      infoBox.style.display = 'block';
+    }
+
+    function printAllTracks() {
+      var btn = document.getElementById('btnPrintAllTracks');
+      if (btn) { btn.disabled = true; btn.innerText = '⏳ Загрузка треков...'; }
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (btn) { btn.disabled = false; btn.innerText = '🖨 Печать всех новых треков'; }
+          if (!res.orders || !res.orders.length) {
+            showMessage('viewMsg', 'Нет заказов со статусом «Трек создан» и заполненным треком', 'error');
+            updateTrackOrdersBadges([]);
+            return;
+          }
+          updateTrackOrdersBadges(res.orders);
+          openPrintWindow(res.orders.map(trackLabelHtml).join(''), 'Треки (' + res.orders.length + ')', trackLabelCss(), true);
+          showMessage('viewMsg', 'К печати: ' + res.orders.length + ' треков', 'success');
+        })
+        .withFailureHandler(function(err) {
+          if (btn) { btn.disabled = false; btn.innerText = '🖨 Печать всех новых треков'; }
+          showMessage('viewMsg', 'Ошибка: ' + err.message, 'error');
+        })
+        .getTrackCreatedOrders();
+    }
+
+    // ========================================================
+    // ДЕЙСТВИЕ: ВСЁ ОТПРАВЛЕНО
+    // ========================================================
+    function markAllSent() {
+      var btn = document.getElementById('btnMarkSent');
+      if (!confirm('Перевести все эти заказы в статус «Отправлены»?')) {
+        return;
+      }
+
+      if (btn) {
+        btn.disabled = true;
+        btn.innerText = '⏳ Обновление статусов...';
+      }
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (btn) {
+            btn.disabled = false;
+            btn.innerText = '🚚 Всё отправлено';
+          }
+          if (res.count === 0) {
+            showMessage('viewMsg', 'Нет заказов для перевода в отправленные', 'error');
+            return;
+          }
+          updateTrackOrdersBadges([]);
+          showMessage('viewMsg', 'Успешно! ' + res.message, 'success');
+        })
+        .withFailureHandler(function(err) {
+          if (btn) {
+            btn.disabled = false;
+            btn.innerText = '🚚 Всё отправлено';
+          }
+          showMessage('viewMsg', 'Ошибка: ' + err.message, 'error');
+        })
+        .markAllTrackOrdersAsSent();
+    }
+  </script>
+</body>
+</html>
