@@ -1,16 +1,5 @@
 {
   "name": "PERO Заказы",
-  "short_name": "Заказы",
-  "start_url": "./index.html",
-  "display": "standalone",
-  "background_color": "#1b5b88",
-  "theme_color": "#1b5b88",
-  "icons": [
-    {
-      "src": "https://i.postimg.cc/vHKvgxbh/featherwhite-(1).png",
-      "sizes": "192x192",
-      "type": "image/png"{
-  "name": "PERO Заказы",
   "short_name": "PERO",
   "start_url": "./index.html",
   "display": "standalone",
@@ -21,14 +10,6 @@
       "src": "https://i.postimg.cc/vHKvgxbh/featherwhite-(1).png",
       "sizes": "192x192",
       "type": "image/png"
-    },
-    {
-      "src": "https://i.postimg.cc/vHKvgxbh/featherwhite-(1).png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
-  ]
-}
     },
     {
       "src": "https://i.postimg.cc/vHKvgxbh/featherwhite-(1).png",
